@@ -48,8 +48,8 @@ type Options struct {
 
 func main() {
 	for _, arg := range os.Args {
-		if arg == "--version" {
-			fmt.Printf("dnsproxy version: %s\n", VersionString)
+		if arg == "--version" || arg == "-v" {
+			fmt.Printf("godnsbench version: %s\n", VersionString)
 			os.Exit(0)
 		}
 	}
