@@ -37,3 +37,21 @@ Application Options:
 Help Options:
   -h, --help      Show this help message
 ```
+
+## Examples
+
+10 connections, 1000 queries to Google DNS using DNS-over-TLS:
+```shell
+godnsbench -a tls://dns.google -p 10 -c 1000
+```
+
+10 connections, 1000 queries for `example.net` to Google DNS using DNS-over-TLS:
+```shell
+godnsbench -a https://dns.google/dns-query -p 10 -c 1000 -q example.net
+```
+
+10 connections, 1000 queries for `example.net` with timeout 1 second to
+AdGuard DNS using DNS-over-QUIC:
+```shell
+godnsbench -a quic://dns.adguard.com/dns-query -p 10 -c 1000 -t 1 -q example.net
+```

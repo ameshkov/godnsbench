@@ -123,6 +123,7 @@ func run(options *Options) {
 	log.Info("Connections count: %d", options.Connections)
 	log.Info("Query: %s", options.Query)
 	log.Info("Queries to send: %d", options.QueriesCount)
+	log.Info("Query timeout: %d seconds", options.Timeout)
 
 	_, err := upstream.AddressToUpstream(options.Address, &upstream.Options{})
 	if err != nil {
@@ -212,6 +213,11 @@ func runConnection(options *Options, state *runState) {
 		} else {
 			_ = state.incErrors()
 			log.Debug("error occurred: %v", err)
+
+			// We should re-create the upstream in this case.
+			u, _ = upstream.AddressToUpstream(options.Address, &upstream.Options{
+				Timeout: time.Duration(options.Timeout) * time.Second,
+			})
 		}
 
 		queriesToSend = state.decQueriesToSend()
