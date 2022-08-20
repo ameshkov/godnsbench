@@ -8,16 +8,18 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/miekg/dns"
-
 	"github.com/AdguardTeam/dnsproxy/upstream"
 	"github.com/AdguardTeam/golibs/log"
 	goFlags "github.com/jessevdk/go-flags"
+	"github.com/miekg/dns"
 )
 
 // VersionString is the version that we'll print to the output. See the makefile
 // for more details.
 var VersionString = "undefined"
+
+// printEveryNRecords regulates when we should print the intermediate results.
+const printEveryNRecords = 100
 
 // Options represents console arguments.
 type Options struct {
@@ -70,6 +72,8 @@ func main() {
 
 // runState represents
 type runState struct {
+	// startTime is the time when the test has been started.
+	startTime time.Time
 	// processed is the number of queries successfully processed.
 	processed int
 	// errors is the number of queries that failed.
@@ -77,8 +81,38 @@ type runState struct {
 	// queriesToSend is the number of queries left to send.
 	queriesToSend int
 
+	// lastPrintedState is the last time we printed the intermediate state.
+	// It is printed on every 100's query.
+	lastPrintedState     time.Time
+	lastPrintedProcessed int
+	lastPrintedErrors    int
+
 	// m protects all fields.
 	m sync.Mutex
+}
+
+// qpsTotal returns the number of queries processed in one second.
+func (r *runState) qpsTotal() (q float64) {
+	r.m.Lock()
+	defer r.m.Unlock()
+
+	e := r.elapsed()
+	return float64(r.processed+r.errors) / e.Seconds()
+}
+
+// elapsed returns total elapsed time.
+func (r *runState) elapsed() (e time.Duration) {
+	return time.Now().Sub(r.startTime)
+}
+
+// elapsedPerQuery returns elapsed time per query.
+func (r *runState) elapsedPerQuery() (e time.Duration) {
+	elapsed := r.elapsed()
+	avgElapsed := elapsed
+	if r.processed > 0 {
+		avgElapsed = elapsed / time.Duration(r.processed)
+	}
+	return avgElapsed
 }
 
 // incProcessed increments processed number, returns the new value.
@@ -86,7 +120,31 @@ func (r *runState) incProcessed() (p int) {
 	r.m.Lock()
 	defer r.m.Unlock()
 	r.processed++
+	r.printIntermediateResults()
 	return r.processed
+}
+
+// printIntermediateResults prints intermediate results if needed.  This method
+// must be protected by the mutex on the outside.
+func (r *runState) printIntermediateResults() {
+	// Time to print the intermediate result and qps.
+	queriesCount := r.processed + r.errors - r.lastPrintedProcessed - r.lastPrintedErrors
+
+	if queriesCount%printEveryNRecords == 0 {
+		startTime := r.lastPrintedState
+		if r.lastPrintedState.IsZero() {
+			startTime = r.startTime
+		}
+
+		elapsed := time.Now().Sub(startTime)
+		qps := float64(queriesCount) / elapsed.Seconds()
+
+		log.Info("Processed %d queries, errors: %d", r.processed, r.errors)
+		log.Info("Queries per second: %f", qps)
+		r.lastPrintedState = time.Now()
+		r.lastPrintedProcessed = r.processed
+		r.lastPrintedErrors = r.errors
+	}
 }
 
 // incErrors increments errors number, returns the new value.
@@ -94,6 +152,7 @@ func (r *runState) incErrors() (e int) {
 	r.m.Lock()
 	defer r.m.Unlock()
 	r.errors++
+	r.printIntermediateResults()
 	return r.errors
 }
 
@@ -134,8 +193,8 @@ func run(options *Options) {
 	signalChannel := make(chan os.Signal, 1)
 	signal.Notify(signalChannel, syscall.SIGINT, syscall.SIGTERM)
 
-	startTime := time.Now()
 	state := &runState{
+		startTime:     time.Now(),
 		queriesToSend: options.QueriesCount + 1,
 	}
 
@@ -171,16 +230,11 @@ func run(options *Options) {
 
 	log.Info("The test results are:")
 
-	elapsed := time.Now().Sub(startTime)
+	elapsed := state.elapsed()
 	log.Info("Elapsed: %s", elapsed)
+	log.Info("Average QPS: %f", state.qpsTotal())
 	log.Info("Processed queries: %d", state.processed)
-
-	avgElapsed := elapsed
-	if state.processed > 0 {
-		avgElapsed = elapsed / time.Duration(state.processed)
-	}
-
-	log.Info("Average per query: %s", avgElapsed)
+	log.Info("Average per query: %s", state.elapsedPerQuery())
 	log.Info("Errors count: %d", state.errors)
 }
 
@@ -206,10 +260,7 @@ func runConnection(options *Options, state *runState) {
 		_, err := u.Exchange(m)
 
 		if err == nil {
-			processed := state.incProcessed()
-			if processed%100 == 0 {
-				log.Info("Processed %d queries", processed)
-			}
+			_ = state.incProcessed()
 		} else {
 			_ = state.incErrors()
 			log.Debug("error occurred: %v", err)
