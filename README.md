@@ -60,5 +60,5 @@ godnsbench -a https://dns.google/dns-query -p 10 -c 1000 -q example.net
 10 connections, 1000 queries for `example.net` with timeout 1 second to
 AdGuard DNS using DNS-over-QUIC:
 ```shell
-godnsbench -a quic://dns.adguard.com/dns-query -p 10 -c 1000 -t 1 -q example.net
+godnsbench -a quic://dns.adguard.com -p 10 -c 1000 -t 1 -q example.net
 ```
