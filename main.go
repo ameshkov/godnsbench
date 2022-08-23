@@ -62,7 +62,7 @@ func (o *Options) String() (s string) {
 
 func main() {
 	for _, arg := range os.Args {
-		if arg == "--version" || arg == "-v" {
+		if arg == "--version" {
 			fmt.Printf("godnsbench version: %s\n", VersionString)
 			os.Exit(0)
 		}
