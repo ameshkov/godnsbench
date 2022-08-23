@@ -25,17 +25,18 @@ Usage:
   godnsbench [OPTIONS]
 
 Application Options:
-  -a, --address=  Address of the DNS server you're trying to test. Note, that it should include the protocol
-                  (tls://, https://, quic://)
-  -p, --parallel= The number of connections you would like to open simultaneously (default: 1)
-  -q, --query=    The host name you would like to resolve (default: example.org)
-  -t, --timeout=  Query timeout in seconds (default: 10)
-  -c, --count=    The overall number of queries we should send (default: 10000)
-  -v, --verbose   Verbose output (optional)
-  -o, --output=   Path to the log file. If not set, write to stdout.
+  -a, --address=    Address of the DNS server you're trying to test. Note, that it should include the protocol (tls://,
+                    https://, quic://)
+  -p, --parallel=   The number of connections you would like to open simultaneously (default: 1)
+  -q, --query=      The host name you would like to resolve (default: example.org)
+  -t, --timeout=    Query timeout in seconds (default: 10)
+  -r, --rate-limit= Rate limit (per second) (default: 0)
+  -c, --count=      The overall number of queries we should send (default: 10000)
+  -v, --verbose     Verbose output (optional)
+  -o, --output=     Path to the log file. If not set, write to stdout.
 
 Help Options:
-  -h, --help      Show this help message
+  -h, --help        Show this help message
 ```
 
 ## Examples
@@ -43,6 +44,12 @@ Help Options:
 10 connections, 1000 queries to Google DNS using DNS-over-TLS:
 ```shell
 godnsbench -a tls://dns.google -p 10 -c 1000
+```
+
+10 connections, 1000 queries to Google DNS using DNS-over-HTTPS with rate limit
+not higher than 10 queries per second:
+```shell
+godnsbench -a https://dns.google/dns-query -p 10 -c 1000 -r 10
 ```
 
 10 connections, 1000 queries for `example.net` to Google DNS using DNS-over-TLS:

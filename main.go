@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"os/signal"
@@ -12,6 +13,7 @@ import (
 	"github.com/AdguardTeam/golibs/log"
 	goFlags "github.com/jessevdk/go-flags"
 	"github.com/miekg/dns"
+	"go.uber.org/ratelimit"
 )
 
 // VersionString is the version that we'll print to the output. See the makefile
@@ -26,7 +28,8 @@ type Options struct {
 	// Address of the server you want to bench.
 	Address string `short:"a" long:"address" description:"Address of the DNS server you're trying to test. Note, that it should include the protocol (tls://, https://, quic://)" optional:"false"`
 
-	// Connections is the number of connections you would like to open simultaneously.
+	// Connections is the number of connections you would like to open
+	// simultaneously.
 	Connections int `short:"p" long:"parallel" description:"The number of connections you would like to open simultaneously" default:"1"`
 
 	// Query is the host name you would like to resolve during the bench.
@@ -34,6 +37,9 @@ type Options struct {
 
 	// Timeout is timeout for a query.
 	Timeout int `short:"t" long:"timeout" description:"Query timeout in seconds" default:"10"`
+
+	// Rate sets the rate limit for queries that are sent to the address.
+	Rate int `short:"r" long:"rate-limit" description:"Rate limit (per second)" default:"0"`
 
 	// QueriesCount is the overall number of queries we should send.
 	QueriesCount int `short:"c" long:"count" description:"The overall number of queries we should send" default:"10000"`
@@ -46,6 +52,12 @@ type Options struct {
 
 	// LogOutput is the optional path to the log file.
 	LogOutput string `short:"o" long:"output" description:"Path to the log file. If not set, write to stdout."`
+}
+
+// String implements fmt.Stringer interface for Options.
+func (o *Options) String() (s string) {
+	b, _ := json.MarshalIndent(o, "", "    ")
+	return string(b)
 }
 
 func main() {
@@ -72,6 +84,9 @@ func main() {
 
 // runState represents
 type runState struct {
+	// rate limits the queries per second.
+	rate ratelimit.Limiter
+
 	// startTime is the time when the test has been started.
 	startTime time.Time
 	// processed is the number of queries successfully processed.
@@ -177,12 +192,7 @@ func run(options *Options) {
 		log.SetOutput(file)
 	}
 
-	log.Info("Run godnsbench with the following configuration")
-	log.Info("Address: %s", options.Address)
-	log.Info("Connections count: %d", options.Connections)
-	log.Info("Query: %s", options.Query)
-	log.Info("Queries to send: %d", options.QueriesCount)
-	log.Info("Query timeout: %d seconds", options.Timeout)
+	log.Info("Run godnsbench with the following configuration:\n%s", options)
 
 	_, err := upstream.AddressToUpstream(options.Address, &upstream.Options{})
 	if err != nil {
@@ -193,9 +203,17 @@ func run(options *Options) {
 	signalChannel := make(chan os.Signal, 1)
 	signal.Notify(signalChannel, syscall.SIGINT, syscall.SIGTERM)
 
+	var rate ratelimit.Limiter
+	if options.Rate > 0 {
+		rate = ratelimit.New(options.Rate)
+	} else {
+		rate = ratelimit.NewUnlimited()
+	}
+
 	state := &runState{
 		startTime:     time.Now(),
 		queriesToSend: options.QueriesCount + 1,
+		rate:          rate,
 	}
 
 	// Subscribe to the bench run close event.
@@ -257,6 +275,9 @@ func runConnection(options *Options, state *runState) {
 				Qclass: dns.ClassINET,
 			}},
 		}
+
+		// Make sure we don't run faster than the pre-defined rate limit.
+		state.rate.Take()
 		_, err := u.Exchange(m)
 
 		if err == nil {
