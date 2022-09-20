@@ -26,7 +26,7 @@ Usage:
 
 Application Options:
   -a, --address=    Address of the DNS server you're trying to test. Note, that it should include the protocol (tls://,
-                    https://, quic://)
+                    https://, quic://, h3://)
   -p, --parallel=   The number of connections you would like to open simultaneously (default: 1)
   -q, --query=      The host name you would like to resolve (default: example.org)
   -t, --timeout=    Query timeout in seconds (default: 10)

@@ -26,7 +26,7 @@ const printEveryNRecords = 100
 // Options represents console arguments.
 type Options struct {
 	// Address of the server you want to bench.
-	Address string `short:"a" long:"address" description:"Address of the DNS server you're trying to test. Note, that it should include the protocol (tls://, https://, quic://)" optional:"false"`
+	Address string `short:"a" long:"address" description:"Address of the DNS server you're trying to test. Note, that it should include the protocol (tls://, https://, quic://, h3://)" optional:"false"`
 
 	// Connections is the number of connections you would like to open
 	// simultaneously.
