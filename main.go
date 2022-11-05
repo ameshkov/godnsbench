@@ -3,8 +3,10 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"math/rand"
 	"os"
 	"os/signal"
+	"strings"
 	"sync"
 	"syscall"
 	"time"
@@ -23,6 +25,10 @@ var VersionString = "undefined"
 // printEveryNRecords regulates when we should print the intermediate results.
 const printEveryNRecords = 100
 
+// randomLen is a length of the random string that replaces {random} in the
+// queried domain name.
+const randomLen = 16
+
 // Options represents console arguments.
 type Options struct {
 	// Address of the server you want to bench.
@@ -33,7 +39,7 @@ type Options struct {
 	Connections int `short:"p" long:"parallel" description:"The number of connections you would like to open simultaneously" default:"1"`
 
 	// Query is the host name you would like to resolve during the bench.
-	Query string `short:"q" long:"query" description:"The host name you would like to resolve" default:"example.org"`
+	Query string `short:"q" long:"query" description:"The host name you would like to resolve. {random} will be replaced with a random string" default:"example.org"`
 
 	// Timeout is timeout for a query.
 	Timeout int `short:"t" long:"timeout" description:"Query timeout in seconds" default:"10"`
@@ -262,15 +268,23 @@ func runConnection(options *Options, state *runState) {
 		Timeout: time.Duration(options.Timeout) * time.Second,
 	})
 
+	randomize := strings.Contains(options.Query, "{random}")
+
 	queriesToSend := state.decQueriesToSend()
 	for queriesToSend > 0 {
+		domainName := options.Query
+
+		if randomize {
+			domainName = strings.ReplaceAll(domainName, "{random}", randString(randomLen))
+		}
+
 		m := &dns.Msg{
 			MsgHdr: dns.MsgHdr{
 				Id:               dns.Id(),
 				RecursionDesired: true,
 			},
 			Question: []dns.Question{{
-				Name:   dns.Fqdn(options.Query),
+				Name:   dns.Fqdn(domainName),
 				Qtype:  dns.TypeA,
 				Qclass: dns.ClassINET,
 			}},
@@ -294,4 +308,14 @@ func runConnection(options *Options, state *runState) {
 
 		queriesToSend = state.decQueriesToSend()
 	}
+}
+
+var letterRunes = []rune("abcdefghijklmnopqrstuvwxyz")
+
+func randString(n int) string {
+	b := make([]rune, n)
+	for i := range b {
+		b[i] = letterRunes[rand.Intn(len(letterRunes))]
+	}
+	return string(b)
 }

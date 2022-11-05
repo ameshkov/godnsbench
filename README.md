@@ -28,7 +28,8 @@ Application Options:
   -a, --address=    Address of the DNS server you're trying to test. Note, that it should include the protocol (tls://,
                     https://, quic://, h3://)
   -p, --parallel=   The number of connections you would like to open simultaneously (default: 1)
-  -q, --query=      The host name you would like to resolve (default: example.org)
+  -q, --query=      The host name you would like to resolve. {random} will be replaced with a random string (default:
+                    example.org)
   -t, --timeout=    Query timeout in seconds (default: 10)
   -r, --rate-limit= Rate limit (per second) (default: 0)
   -c, --count=      The overall number of queries we should send (default: 10000)
@@ -61,4 +62,10 @@ godnsbench -a https://dns.google/dns-query -p 10 -c 1000 -q example.net
 AdGuard DNS using DNS-over-QUIC:
 ```shell
 godnsbench -a quic://dns.adguard.com -p 10 -c 1000 -t 1 -q example.net
+```
+
+10 connections, 1000 queries for random subdomains of `example.net` with
+timeout 1 second to Google DNS using DNS-over-TLS:
+```shell
+godnsbench -a tls://dns.google -p 10 -c 1000 -t 1 -q {random}.example.net
 ```
