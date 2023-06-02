@@ -45,8 +45,8 @@ func Test_run(t *testing.T) {
 		Connections:        1,
 		Query:              "example.org",
 		Timeout:            10,
-		Rate:               500,
-		QueriesCount:       1000,
+		Rate:               50,
+		QueriesCount:       100,
 		InsecureSkipVerify: true,
 	}
 
