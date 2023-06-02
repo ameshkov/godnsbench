@@ -1,3 +1,4 @@
+// Package main is responsible for the command-line interface.
 package main
 
 import (
@@ -50,6 +51,10 @@ type Options struct {
 	// QueriesCount is the overall number of queries we should send.
 	QueriesCount int `short:"c" long:"count" description:"The overall number of queries we should send" default:"10000"`
 
+	// InsecureSkipVerify controls whether godnsbench validates server certificate or
+	// allows connections with servers with self-signed certs.
+	InsecureSkipVerify bool `long:"insecure" description:"Do not validate the server certificate" optional:"yes" optional-value:"true"`
+
 	// Log settings
 	// --
 
@@ -80,12 +85,21 @@ func main() {
 	if err != nil {
 		if flagsErr, ok := err.(*goFlags.Error); ok && flagsErr.Type == goFlags.ErrHelp {
 			os.Exit(0)
-		} else {
-			os.Exit(1)
 		}
+
+		os.Exit(1)
 	}
 
-	run(options)
+	state := run(options)
+
+	log.Info("The test results are:")
+
+	elapsed := state.elapsed()
+	log.Info("Elapsed: %s", elapsed)
+	log.Info("Average QPS: %f", state.qpsTotal())
+	log.Info("Processed queries: %d", state.processed)
+	log.Info("Average per query: %s", state.elapsedPerQuery())
+	log.Info("Errors count: %d", state.errors)
 }
 
 // runState represents
@@ -185,7 +199,9 @@ func (r *runState) decQueriesToSend() (q int) {
 	return r.queriesToSend
 }
 
-func run(options *Options) {
+// run is basically the entry point of the program that interprets the
+// command-line arguments and runs the bench.
+func run(options *Options) (state *runState) {
 	if options.Verbose {
 		log.SetLevel(log.DEBUG)
 	}
@@ -194,12 +210,13 @@ func run(options *Options) {
 		if err != nil {
 			log.Fatalf("cannot create a log file: %s", err)
 		}
-		defer file.Close() //nolint
+		defer log.OnCloserError(file, log.DEBUG)
 		log.SetOutput(file)
 	}
 
 	log.Info("Run godnsbench with the following configuration:\n%s", options)
 
+	// This call is just to validate the server address.
 	_, err := upstream.AddressToUpstream(options.Address, &upstream.Options{})
 	if err != nil {
 		log.Fatalf("The server address %s is invalid: %v", options.Address, err)
@@ -216,7 +233,7 @@ func run(options *Options) {
 		rate = ratelimit.NewUnlimited()
 	}
 
-	state := &runState{
+	state = &runState{
 		startTime:     time.Now(),
 		queriesToSend: options.QueriesCount + 1,
 		rate:          rate,
@@ -252,21 +269,18 @@ func run(options *Options) {
 		log.Info("The test has finished.")
 	}
 
-	log.Info("The test results are:")
-
-	elapsed := state.elapsed()
-	log.Info("Elapsed: %s", elapsed)
-	log.Info("Average QPS: %f", state.qpsTotal())
-	log.Info("Processed queries: %d", state.processed)
-	log.Info("Average per query: %s", state.elapsedPerQuery())
-	log.Info("Errors count: %d", state.errors)
+	return state
 }
 
 func runConnection(options *Options, state *runState) {
 	// Ignoring the error here since upstream address was already verified.
-	u, _ := upstream.AddressToUpstream(options.Address, &upstream.Options{
-		Timeout: time.Duration(options.Timeout) * time.Second,
-	})
+	u, _ := upstream.AddressToUpstream(
+		options.Address,
+		&upstream.Options{
+			Timeout:            time.Duration(options.Timeout) * time.Second,
+			InsecureSkipVerify: options.InsecureSkipVerify,
+		},
+	)
 
 	randomize := strings.Contains(options.Query, "{random}")
 

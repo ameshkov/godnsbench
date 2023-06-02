@@ -13,7 +13,7 @@ A very simple DNS benchmarking tool based on [dnsproxy](https://github.com/Adgua
     ```
 * From source:
     ```
-    go get github.com/ameshkov/godnsbench
+    go install github.com/ameshkov/godnsbench
     ```
 * You can get a binary from the [releases page](https://github.com/ameshkov/godnsbench/releases).
 
@@ -33,6 +33,7 @@ Application Options:
   -t, --timeout=    Query timeout in seconds (default: 10)
   -r, --rate-limit= Rate limit (per second) (default: 0)
   -c, --count=      The overall number of queries we should send (default: 10000)
+      --insecure    Do not validate the server certificate
   -v, --verbose     Verbose output (optional)
   -o, --output=     Path to the log file. If not set, write to stdout.
 
