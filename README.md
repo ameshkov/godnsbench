@@ -13,7 +13,7 @@ A very simple DNS benchmarking tool based on [dnsproxy](https://github.com/Adgua
     ```
 * From source:
     ```
-    go install github.com/ameshkov/godnsbench
+    go install github.com/ameshkov/godnsbench@latest
     ```
 * You can get a binary from the [releases page](https://github.com/ameshkov/godnsbench/releases).
 
