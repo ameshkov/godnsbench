@@ -102,7 +102,8 @@ func main() {
 	log.Info("Errors count: %d", state.errors)
 }
 
-// runState represents
+// runState represents the overall bench run state and is shared among each
+// worker goroutine.
 type runState struct {
 	// rate limits the queries per second.
 	rate ratelimit.Limiter
