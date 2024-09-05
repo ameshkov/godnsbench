@@ -29,6 +29,8 @@ adheres to [Semantic Versioning][semver].
 
 [1.9.0changes]: https://github.com/ameshkov/godnsbench/compare/v1.8.1...v1.9.0
 
+[1.9.0]: https://github.com/ameshkov/godnsbench/releases/tag/v1.9.0
+
 ## [1.8.1] - 2023-08-22
 
 ### Changed
