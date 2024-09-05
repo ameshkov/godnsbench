@@ -11,6 +11,10 @@ adheres to [Semantic Versioning][semver].
 
 ## [Unreleased]
 
+[unreleased]: https://github.com/ameshkov/godnsbench/compare/v1.9.0...HEAD
+
+## [1.9.0] - 2024-09-05
+
 ### Added
 
 * Added [Docker image][dockerimage].
@@ -21,7 +25,9 @@ adheres to [Semantic Versioning][semver].
 
 * Updated dependencies.
 
-[unreleased]: https://github.com/ameshkov/godnsbench/compare/v1.8.1...HEAD
+[See changes][1.9.0changes].
+
+[1.9.0changes]: https://github.com/ameshkov/godnsbench/compare/v1.8.1...v1.9.0
 
 ## [1.8.1] - 2023-08-22
 
