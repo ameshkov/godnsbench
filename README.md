@@ -3,20 +3,29 @@
 
 # godnsbench
 
-A very simple DNS benchmarking tool based on [dnsproxy](https://github.com/AdguardTeam/dnsproxy).
+A very simple DNS benchmarking tool based on [dnsproxy][dnsproxy].
+
+[dnsproxy]: https://github.com/AdguardTeam/dnsproxy
 
 ## How to install
 
 * Using homebrew:
-    ```
+    ```shell
     brew install ameshkov/tap/godnsbench
     ```
 * From source:
-    ```
+    ```shell
     go install github.com/ameshkov/godnsbench@latest
     ```
-* You can get a binary from the [releases page](https://github.com/ameshkov/godnsbench/releases).
+* You can use [a Docker image][dockerimage]:
+    ```shell
+    docker run --rm ghcr.io/ameshkov/godnsbench --help
+    ```
+* You can get a binary from the [releases page][releases].
 
+[dockerimage]: https://github.com/ameshkov/godnsbench/pkgs/container/godnsbench
+
+[releases]: https://github.com/ameshkov/godnsbench/releases
 
 ## Usage
 
@@ -44,29 +53,34 @@ Help Options:
 ## Examples
 
 10 connections, 1000 queries to Google DNS using DNS-over-TLS:
+
 ```shell
 godnsbench -a tls://dns.google -p 10 -c 1000
 ```
 
 10 connections, 1000 queries to Google DNS using DNS-over-HTTPS with rate limit
 not higher than 10 queries per second:
+
 ```shell
 godnsbench -a https://dns.google/dns-query -p 10 -c 1000 -r 10
 ```
 
 10 connections, 1000 queries for `example.net` to Google DNS using DNS-over-TLS:
+
 ```shell
 godnsbench -a https://dns.google/dns-query -p 10 -c 1000 -q example.net
 ```
 
 10 connections, 1000 queries for `example.net` with timeout 1 second to
 AdGuard DNS using DNS-over-QUIC:
+
 ```shell
 godnsbench -a quic://dns.adguard.com -p 10 -c 1000 -t 1 -q example.net
 ```
 
 10 connections, 1000 queries for random subdomains of `example.net` with
 timeout 1 second to Google DNS using DNS-over-TLS:
+
 ```shell
 godnsbench -a tls://dns.google -p 10 -c 1000 -t 1 -q {random}.example.net
 ```

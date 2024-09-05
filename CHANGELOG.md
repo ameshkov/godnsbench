@@ -11,9 +11,15 @@ adheres to [Semantic Versioning][semver].
 
 ## [Unreleased]
 
+### Added
+
+* Added [Docker image][dockerimage].
+
+[dockerimage]: https://github.com/ameshkov/godnsbench/pkgs/container/godnsbench
+
 ### Changed
 
-* Updated dependencies
+* Updated dependencies.
 
 [unreleased]: https://github.com/ameshkov/godnsbench/compare/v1.8.1...HEAD
 
