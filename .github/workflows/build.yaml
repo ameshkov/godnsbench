@@ -92,21 +92,13 @@ jobs:
       - name: Create release
         if: startsWith(github.ref, 'refs/tags/v')
         id: create_release
-        uses: actions/create-release@v1
+        uses: softprops/action-gh-release@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tag_name: ${{ github.ref }}
-          release_name: Release ${{ github.ref }}
+          body: See [CHANGELOG.md](./CHANGELOG.md) for the list of changes.
           draft: false
           prerelease: false
-
-      - name: Upload
-        if: startsWith(github.ref, 'refs/tags/v')
-        uses: xresloader/upload-to-github-release@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          file: "build/godnsbench-*.tar.gz;build/godnsbench-*.zip"
-          tags: true
-          draft: false
+          files: |
+            build/godnsbench-*.tar.gz
+            build/godnsbench-*.zip

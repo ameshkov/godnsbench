@@ -21,6 +21,5 @@ jobs:
       - name: golangci-lint
         uses: golangci/golangci-lint-action@v2.3.0
         with:
-          # This field is required.  Dont set the patch version to always use
-          # the latest patch version.
-          version: v1.52.2
+          # This field is required.
+          version: v1.60.3

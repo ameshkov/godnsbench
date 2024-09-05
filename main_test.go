@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"crypto/ecdsa"
 	"crypto/rand"
 	"crypto/rsa"
@@ -25,7 +26,7 @@ func Test_run(t *testing.T) {
 	tlsConfig, _ := createServerTLSConfig(t, "example.org")
 	p := createTestProxy(t, tlsConfig)
 
-	p.RequestHandler = func(p *proxy.Proxy, d *proxy.DNSContext) (err error) {
+	p.RequestHandler = func(_ *proxy.Proxy, d *proxy.DNSContext) (err error) {
 		resp := &dns.Msg{}
 		resp.SetReply(d.Req)
 		d.Res = resp
@@ -33,9 +34,11 @@ func Test_run(t *testing.T) {
 		return nil
 	}
 
-	err := p.Start()
+	err := p.Start(context.Background())
 	require.NoError(t, err)
-	testutil.CleanupAndRequireSuccess(t, p.Stop)
+	testutil.CleanupAndRequireSuccess(t, func() (err error) {
+		return p.Shutdown(context.Background())
+	})
 
 	addr := p.Addr(proxy.ProtoHTTPS)
 	serverAddress := fmt.Sprintf("https://%s/dns-query", addr)
@@ -59,37 +62,40 @@ func Test_run(t *testing.T) {
 // createTestProxy creates a test DNS proxy that listens to all protocols.
 func createTestProxy(t *testing.T, tlsConfig *tls.Config) (p *proxy.Proxy) {
 	listenIP := "127.0.0.1"
-	p = &proxy.Proxy{}
+	cfg := &proxy.Config{}
 
 	if tlsConfig != nil {
-		p.TLSListenAddr = []*net.TCPAddr{
+		cfg.TLSListenAddr = []*net.TCPAddr{
 			{Port: 0, IP: net.ParseIP(listenIP)},
 		}
-		p.HTTPSListenAddr = []*net.TCPAddr{
+		cfg.HTTPSListenAddr = []*net.TCPAddr{
 			{Port: 0, IP: net.ParseIP(listenIP)},
 		}
-		p.QUICListenAddr = []*net.UDPAddr{
+		cfg.QUICListenAddr = []*net.UDPAddr{
 			{Port: 0, IP: net.ParseIP(listenIP)},
 		}
-		p.TLSConfig = tlsConfig
+		cfg.TLSConfig = tlsConfig
 	} else {
-		p.UDPListenAddr = []*net.UDPAddr{
+		cfg.UDPListenAddr = []*net.UDPAddr{
 			{Port: 0, IP: net.ParseIP(listenIP)},
 		}
-		p.TCPListenAddr = []*net.TCPAddr{
+		cfg.TCPListenAddr = []*net.TCPAddr{
 			{Port: 0, IP: net.ParseIP(listenIP)},
 		}
 	}
 
 	// Setting a local upstream, it won't be used anyway since RequestHandler
 	// will handler all requests.
-	p.UpstreamConfig = &proxy.UpstreamConfig{}
+	cfg.UpstreamConfig = &proxy.UpstreamConfig{}
 	dnsUpstream, err := upstream.AddressToUpstream(
 		"127.0.0.1:12312",
 		&upstream.Options{},
 	)
 	require.NoError(t, err)
-	p.UpstreamConfig.Upstreams = append(p.UpstreamConfig.Upstreams, dnsUpstream)
+	cfg.UpstreamConfig.Upstreams = append(cfg.UpstreamConfig.Upstreams, dnsUpstream)
+
+	p, err = proxy.New(cfg)
+	require.NoError(t, err)
 
 	return p
 }
