@@ -338,6 +338,8 @@ func runConnection(options *Options, state *runState) {
 			domainName = strings.ReplaceAll(domainName, "{random}", randString(randomLen))
 		}
 
+		log.Debug("Querying %s", domainName)
+
 		m := &dns.Msg{
 			MsgHdr: dns.MsgHdr{
 				Id:               dns.Id(),
@@ -352,9 +354,13 @@ func runConnection(options *Options, state *runState) {
 
 		// Make sure we don't run faster than the pre-defined rate limit.
 		state.rate.Take()
+
+		// Send the DNS query.
 		_, err := u.Exchange(m)
 
 		if err == nil {
+			log.Debug("Query %s has been successfully processed", domainName)
+
 			_ = state.incProcessed()
 		} else {
 			_ = state.incErrors()

@@ -66,7 +66,7 @@ func Test_runWithQueriesFile(t *testing.T) {
 example.com
 example.net`
 	filePath := path.Join(os.TempDir(), "queries.txt")
-	err := os.WriteFile(filePath, []byte(str), 0644)
+	err := os.WriteFile(filePath, []byte(str), 0600)
 	require.NoError(t, err)
 
 	defer func() {
