@@ -11,12 +11,20 @@ adheres to [Semantic Versioning][semver].
 
 ## [Unreleased]
 
+[unreleased]: https://github.com/ameshkov/godnsbench/compare/v1.10.0...HEAD
+
+## [1.10.0] - 2024-12-03
+
 ### Added
 
 * Added `-f` / `--file` flag with which you can specify source file with
   hostnames that will be queried.
 
-[unreleased]: https://github.com/ameshkov/godnsbench/compare/v1.9.0...HEAD
+[See changes][1.10.0changes].
+
+[1.10.0changes]: https://github.com/ameshkov/godnsbench/compare/v1.9.0...v1.10.0
+
+[1.10.0]: https://github.com/ameshkov/godnsbench/releases/tag/v1.10.0
 
 ## [1.9.0] - 2024-09-05
 
