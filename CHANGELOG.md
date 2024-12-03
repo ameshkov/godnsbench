@@ -11,6 +11,11 @@ adheres to [Semantic Versioning][semver].
 
 ## [Unreleased]
 
+### Added
+
+* Added `-f` / `--file` flag with which you can specify source file with
+  hostnames that will be queried.
+
 [unreleased]: https://github.com/ameshkov/godnsbench/compare/v1.9.0...HEAD
 
 ## [1.9.0] - 2024-09-05

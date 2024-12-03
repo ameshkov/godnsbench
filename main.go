@@ -12,6 +12,8 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/AdguardTeam/golibs/stringutil"
+
 	"github.com/AdguardTeam/dnsproxy/upstream"
 	"github.com/AdguardTeam/golibs/log"
 	goFlags "github.com/jessevdk/go-flags"
@@ -41,6 +43,9 @@ type Options struct {
 
 	// Query is the host name you would like to resolve during the bench.
 	Query string `short:"q" long:"query" description:"The host name you would like to resolve. {random} will be replaced with a random string" default:"example.org"`
+
+	// QueriesPath is the path to the file with domain names to query.
+	QueriesPath string `short:"f" long:"file" description:"The path to the file with domain names to query"`
 
 	// Timeout is timeout for a query.
 	Timeout int `short:"t" long:"timeout" description:"Query timeout in seconds" default:"10"`
@@ -116,6 +121,11 @@ type runState struct {
 	errors int
 	// queriesToSend is the number of queries left to send.
 	queriesToSend int
+	// queriesSent is the number of queries sent.
+	queriesSent int
+
+	// hostnames is the list of hostnames to query.
+	hostnames []string
 
 	// lastPrintedState is the last time we printed the intermediate state.
 	// It is printed on every 100's query.
@@ -133,6 +143,7 @@ func (r *runState) qpsTotal() (q float64) {
 	defer r.m.Unlock()
 
 	e := r.elapsed()
+
 	return float64(r.processed+r.errors) / e.Seconds()
 }
 
@@ -148,15 +159,26 @@ func (r *runState) elapsedPerQuery() (e time.Duration) {
 	if r.processed > 0 {
 		avgElapsed = elapsed / time.Duration(r.processed)
 	}
+
 	return avgElapsed
+}
+
+// nextHostname returns the next hostname to be queried.
+func (r *runState) nextHostname() (h string) {
+	r.m.Lock()
+	defer r.m.Unlock()
+
+	return r.hostnames[r.queriesSent%len(r.hostnames)]
 }
 
 // incProcessed increments processed number, returns the new value.
 func (r *runState) incProcessed() (p int) {
 	r.m.Lock()
 	defer r.m.Unlock()
+
 	r.processed++
 	r.printIntermediateResults()
+
 	return r.processed
 }
 
@@ -187,8 +209,10 @@ func (r *runState) printIntermediateResults() {
 func (r *runState) incErrors() (e int) {
 	r.m.Lock()
 	defer r.m.Unlock()
+
 	r.errors++
 	r.printIntermediateResults()
+
 	return r.errors
 }
 
@@ -196,7 +220,10 @@ func (r *runState) incErrors() (e int) {
 func (r *runState) decQueriesToSend() (q int) {
 	r.m.Lock()
 	defer r.m.Unlock()
+
 	r.queriesToSend--
+	r.queriesSent++
+
 	return r.queriesToSend
 }
 
@@ -234,10 +261,30 @@ func run(options *Options) (state *runState) {
 		rate = ratelimit.NewUnlimited()
 	}
 
+	var hostnames []string
+
+	if options.QueriesPath != "" {
+		log.Info("Reading hostnames from the file %s", options.QueriesPath)
+
+		b, err := os.ReadFile(options.QueriesPath)
+		if err != nil {
+			log.Fatalf("Failed to read from %s: %v", options.QueriesPath, err)
+		}
+
+		hostnames = stringutil.SplitTrimmed(string(b), "\n")
+	} else {
+		hostnames = []string{options.Query}
+	}
+
+	if len(hostnames) == 0 {
+		log.Fatalf("Empty list of hostnames in the file %s", options.QueriesPath)
+	}
+
 	state = &runState{
 		startTime:     time.Now(),
 		queriesToSend: options.QueriesCount + 1,
 		rate:          rate,
+		hostnames:     hostnames,
 	}
 
 	// Subscribe to the bench run close event.
@@ -283,13 +330,11 @@ func runConnection(options *Options, state *runState) {
 		},
 	)
 
-	randomize := strings.Contains(options.Query, "{random}")
-
 	queriesToSend := state.decQueriesToSend()
 	for queriesToSend > 0 {
-		domainName := options.Query
+		domainName := state.nextHostname()
 
-		if randomize {
+		if strings.Contains(domainName, "{random}") {
 			domainName = strings.ReplaceAll(domainName, "{random}", randString(randomLen))
 		}
 

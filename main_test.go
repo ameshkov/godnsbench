@@ -12,6 +12,8 @@ import (
 	"fmt"
 	"math/big"
 	"net"
+	"os"
+	"path"
 	"testing"
 	"time"
 
@@ -47,6 +49,54 @@ func Test_run(t *testing.T) {
 		Address:            serverAddress,
 		Connections:        1,
 		Query:              "example.org",
+		Timeout:            10,
+		Rate:               50,
+		QueriesCount:       100,
+		InsecureSkipVerify: true,
+	}
+
+	state := run(o)
+
+	require.Equal(t, o.QueriesCount, state.processed)
+	require.Equal(t, 0, state.errors)
+}
+
+func Test_runWithQueriesFile(t *testing.T) {
+	str := `example.org
+example.com
+example.net`
+	filePath := path.Join(os.TempDir(), "queries.txt")
+	err := os.WriteFile(filePath, []byte(str), 0644)
+	require.NoError(t, err)
+
+	defer func() {
+		_ = os.Remove(filePath)
+	}()
+
+	tlsConfig, _ := createServerTLSConfig(t, "example.org")
+	p := createTestProxy(t, tlsConfig)
+
+	p.RequestHandler = func(_ *proxy.Proxy, d *proxy.DNSContext) (err error) {
+		resp := &dns.Msg{}
+		resp.SetReply(d.Req)
+		d.Res = resp
+
+		return nil
+	}
+
+	err = p.Start(context.Background())
+	require.NoError(t, err)
+	testutil.CleanupAndRequireSuccess(t, func() (err error) {
+		return p.Shutdown(context.Background())
+	})
+
+	addr := p.Addr(proxy.ProtoHTTPS)
+	serverAddress := fmt.Sprintf("https://%s/dns-query", addr)
+
+	o := &Options{
+		Address:            serverAddress,
+		Connections:        1,
+		QueriesPath:        filePath,
 		Timeout:            10,
 		Rate:               50,
 		QueriesCount:       100,
